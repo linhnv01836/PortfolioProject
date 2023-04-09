@@ -1,0 +1,144 @@
+SELECT top 100 *
+FROM PortfolioProject.dbo.NashvilleHousing nh 
+
+SELECT SaleDate
+FROM PortfolioProject.dbo.NashvilleHousing nh 
+
+
+-- Populate Property Address data
+SELECT *  
+FROM PortfolioProject.dbo.NashvilleHousing nh 
+ORDER BY ParcelID 
+
+
+-- When importing data from Excel, DBeaver treated NULL as '', so converting back to NULL for convenience
+UPDATE PortfolioProject.dbo.NashvilleHousing 
+SET PropertyAddress = NULL
+WHERE PropertyAddress = ''
+
+
+--SELECT a.ParcelID, a.PropertyAddress, b.ParcelID, b.PropertyAddress, ISNULL(a.PropertyAddress, b.PropertyAddress)
+--FROM PortfolioProject.dbo.NashvilleHousing a
+--JOIN PortfolioProject.dbo.NashvilleHousing b
+--	on a.ParcelID = b.ParcelID
+--	AND a.[UniqueID ] <> b.[UniqueID ] 
+--WHERE a.PropertyAddress IS NULL 
+
+
+-- Update PropertyAddress to the one with same ParcelID if it is NULL
+UPDATE a
+SET PropertyAddress = ISNULL(a.PropertyAddress, b.PropertyAddress)
+FROM PortfolioProject.dbo.NashvilleHousing a
+JOIN PortfolioProject.dbo.NashvilleHousing b
+	on a.ParcelID = b.ParcelID
+	AND a.[UniqueID ] <> b.[UniqueID ] 
+WHERE a.PropertyAddress IS NULL 
+
+
+------------------------------------------------------------
+--SELECT PropertyAddress 
+--FROM PortfolioProject.dbo.NashvilleHousing nh;
+
+--SELECT 
+--SUBSTRING(PropertyAddress, 1, charindex(',', PropertyAddress) - 1) as Address
+--, SUBSTRING(PropertyAddress, charindex(',', PropertyAddress) + 1, LEN(PropertyAddress)) as City
+--FROM PortfolioProject.dbo.NashvilleHousing nh;
+
+--Breaking out Address into individual columns (Address, City, State)
+ALTER table NashvilleHousing 
+add PropertySplitAddress nvarchar(255);
+
+UPDATE NashvilleHousing 
+set PropertySplitAddress = SUBSTRING(PropertyAddress, 1, charindex(',', PropertyAddress) - 1)
+
+ALTER table NashvilleHousing 
+add PropertySplitCity nvarchar(255);
+
+UPDATE NashvilleHousing 
+set PropertySplitCity = SUBSTRING(PropertyAddress, charindex(',', PropertyAddress) + 1, LEN(PropertyAddress))
+
+SELECT *
+FROM NashvilleHousing nh;
+
+-- Easier method using PARSENAME
+
+SELECT OwnerAddress
+FROM NashvilleHousing nh;
+
+SELECT 
+PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3) as SplitAddress
+, PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2) as SplitCity
+, PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1) as SplitState
+from NashvilleHousing nh;
+
+ALTER table NashvilleHousing 
+add OwnerSplitAddress nvarchar(255);
+
+UPDATE NashvilleHousing 
+set OwnerSplitAddress = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 3)
+
+ALTER table NashvilleHousing 
+add OwnerSplitCity nvarchar(255);
+
+UPDATE NashvilleHousing 
+set OwnerSplitCity = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 2)
+
+ALTER table NashvilleHousing 
+add OwnerSplitState nvarchar(255);
+
+UPDATE NashvilleHousing 
+set OwnerSplitState = PARSENAME(REPLACE(OwnerAddress, ',', '.'), 1);
+
+
+-- Change Y and N to Yes and No in "Sold as Vacant" field
+SELECT DISTINCT(SoldAsVacant), COUNT(SoldAsVacant) 
+FROM NashvilleHousing nh
+group by SoldAsVacant
+order by 2;
+
+SELECT SoldAsVacant 
+, CASE when SoldAsVacant = 'Y' then 'Yes'
+	   when SoldAsVacant = 'N' then 'No'
+	   ELSE SoldAsVacant
+	   end
+FROM NashvilleHousing nh;
+
+UPDATE NashvilleHousing 
+set SoldAsVacant = CASE when SoldAsVacant = 'Y' then 'Yes'
+					    when SoldAsVacant = 'N' then 'No'
+					    ELSE SoldAsVacant
+					    end;
+
+------------------------------------------------------------
+-- Remove Duplicates
+with RowNumCTE as(
+SELECT *
+, ROW_NUMBER() over (
+	PARTITION by ParcelID,
+		PropertyAddress,
+		SalePrice,
+		SaleDate,
+		LegalReference
+		order by
+			UniqueID
+			) as row_num	
+FROM NashvilleHousing nh
+)
+select *
+from RowNumCTE
+WHERE row_num > 1;
+
+
+ALTER table NashvilleHousing 
+drop column OwnerAddress, TaxDistrict, PropertyAddress
+
+ALTER table NashvilleHousing 
+drop column OwnerAddress, TaxDistrict, PropertyAddress
+
+select *
+from NashvilleHousing nh 
+					  
+					    
+
+
+
